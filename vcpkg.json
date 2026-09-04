@@ -1,0 +1,6 @@
+{
+    "name": "valve-network-test",
+    "dependencies": [
+        "openssl"
+    ]
+}
