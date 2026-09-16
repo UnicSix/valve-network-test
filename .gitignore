@@ -1,2 +1,5 @@
 /build
 /src/vendor/v1.6.0.zip
+/tbuild
+/debug-build
+/rel-build

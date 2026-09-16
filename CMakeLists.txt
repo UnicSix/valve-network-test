@@ -28,7 +28,6 @@ set(CMAKE_TOOLCHAIN_FILE
     "${CMAKE_SOURCE_DIR}/src/vendor/GameNetworkingSockets-1.6.0/vcpkg/scripts/buildsystems/vcpkg.cmake"
     CACHE STRING "" FORCE)
 set(VCPKG_MANIFEST_MODE ON CACHE BOOL "" FORCE)
-
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -36,6 +35,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(valve_network)
 
 add_subdirectory("src/vendor/GameNetworkingSockets-1.6.0")
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+add_subdirectory("src/vendor/SDL3-3.4.16")
+add_subdirectory("src/vendor/SDL_image-release-3.4.6")
 
 file(GLOB PROJECT_SRC
     "src/*.cpp"
@@ -43,5 +48,23 @@ file(GLOB PROJECT_SRC
 
 add_executable(${PROJECT_NAME} ${PROJECT_SRC})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC GameNetworkingSockets_s)
+target_include_directories(${PROJECT_NAME}
+    PUBLIC "src/vendor/Nuklear-4.13.3"
+    PUBLIC "src/vendor/Nuklear-4.13.3/demo"
+)
+target_link_libraries(${PROJECT_NAME} 
+    PRIVATE GameNetworkingSockets_s
+    PRIVATE SDL3::SDL3-static
+    PRIVATE SDL3_image-static
+)
 
+function(copy_resource SOURCE_DIR DEST_DIR)
+  file(GLOB COPY_SOURCES "${SOURCE_DIR}/*")
+  file(MAKE_DIRECTORY ${DEST_DIR})
+  foreach(SRC_FILE IN LISTS COPY_SOURCES)
+    message(STATUS "Copy file ${SRC_FILE} to ${DEST_DIR}")
+    file(COPY ${SRC_FILE} DESTINATION ${DEST_DIR})
+  endforeach()
+endfunction()
+
+copy_resource("${CMAKE_SOURCE_DIR}/res/textures" "${CMAKE_BINARY_DIR}/res/textures")
