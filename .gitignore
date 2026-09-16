@@ -3,3 +3,4 @@
 /tbuild
 /debug-build
 /rel-build
+.clangd
