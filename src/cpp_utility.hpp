@@ -3,17 +3,18 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
-#include <format>
 #include <print>
 #include <string_view>
+#include "cpp_alias.hpp"
 
 // very basic features that std doesn't provide
 #ifdef __linux__
 #include <unistd.h>
 #elifdef _WIN32
+#include <windows.h>
 #endif
 
-constexpr inline std::filesystem::path get_ExecutableDirectory() {
+const inline std::filesystem::path get_ExecutableDirectory() {
 #ifdef __linux__
     char path_buf[1024];
     auto len = readlink("/proc/self/exe", path_buf, sizeof(path_buf));
@@ -29,6 +30,14 @@ constexpr inline std::filesystem::path get_ExecutableDirectory() {
         len = 0;
     }
 #elif defined(_WIN32)
+    char  path_buf[1024];
+    DWORD len =
+        GetModuleFileNameA(nullptr, path_buf, sizeof(path_buf));
+    if (len == 0 || len >= sizeof(path_buf)) {
+        std::println(stderr, "Err: {}, GetModuleFileNameA failed",
+                     (u64)GetLastError());
+        len = 0;
+    }
 #endif
     return std::filesystem::path(std::string_view(path_buf, len))
         .parent_path();
@@ -61,8 +70,8 @@ class ConstString {
         len  = 0;
     }
 
-    int         Size() const { return len; }
-    const char* Cstr() const { return data; }
+    constexpr int   Size() const { return len; }
+    constexpr char* Cstr() const { return data; }
 
    private:
     char* data = nullptr;

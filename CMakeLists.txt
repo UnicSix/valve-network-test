@@ -20,6 +20,8 @@ if (WIN32)
         "C:/msys64/usr/include"
     )
     list(APPEND CMAKE_SYSTEM_IGNORE_PATH ${CMAKE_IGNORE_PATH})
+    add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/Zc:preprocessor>)
+    add_compile_options(/std:c++23preview)
 else()
     set(CMAKE_C_COMPILER gcc)
     set(CMAKE_CXX_COMPILER g++)
@@ -68,3 +70,8 @@ function(copy_resource SOURCE_DIR DEST_DIR)
 endfunction()
 
 copy_resource("${CMAKE_SOURCE_DIR}/res/textures" "${CMAKE_BINARY_DIR}/res/textures")
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/res/textures"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/res/textures")
