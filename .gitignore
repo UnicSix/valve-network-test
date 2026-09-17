@@ -4,3 +4,6 @@
 /debug-build
 /rel-build
 .clangd
+src/vendor/Nuklear-4.13.3
+src/vendor/SDL3-3.4.16
+src/vendor/SDL_image-release-3.4.6
