@@ -1,6 +1,7 @@
 #include "game.hpp"
 
 #include <cstddef>
+#include <cstring>
 
 #include "SDL3/SDL_clipboard.h"
 #include "SDL3/SDL_error.h"
@@ -9,6 +10,7 @@
 #include "SDL3/SDL_timer.h"
 #include "SDL3/SDL_video.h"
 #include "SDL3_image/SDL_image.h"
+#include "cpp_alias.hpp"
 #include "cpp_utility.hpp"
 #include "logging.hpp"
 
@@ -50,11 +52,19 @@ Game::Game(SDL_Window* window, SDL_Renderer* renderer)
     main_menu_bg_tex = IMG_LoadTexture(renderer, main_bg_path.Cstr());
     if (main_menu_bg_tex == NULL) {
         ErrorLog("Failed to load MainMenu texture", SDL_GetError());
-        std::exit(EXIT_FAILURE);
+        // std::exit(EXIT_FAILURE);
     }
     deletors.push([this] {
         DebugLog("Release main menu texture");
         SDL_DestroyTexture(main_menu_bg_tex);
+    });
+    ui_scene_flags.set(U32(UIScene::MAIN_MENU));
+    std::memset(txt_edit_buf, 0, sizeof(txt_edit_buf));
+    nk_textedit_init_fixed(txt_edit, txt_edit_buf,
+                           sizeof(txt_edit_buf));
+    deletors.push([this] {
+        DebugLog("Release text edit buffer");
+        nk_textedit_free(txt_edit);
     });
 }
 
@@ -70,16 +80,14 @@ void Game::OnEvent(SDL_Event* e) {
                            BACKGROUND_COLOR.a);
     SDL_RenderClear(renderer);
     nk_input_end(ctx);
-    switch (ui_scene) {
-        case UIScene::MAIN_MENU:
-            MainMenu();
-            break;
-        case UIScene::MULTIPLAYERS:
-            MultiplierMenu();
-            break;
-        case UIScene::SETTING_MENU:
-            SettingMenu();
-            break;
+    if (ui_scene_flags.test(U32(UIScene::MAIN_MENU))) {
+        MainMenu();
+    }
+    if (ui_scene_flags.test(U32(UIScene::MULTIPLAYERS))) {
+        MultiplierMenu();
+    }
+    if (ui_scene_flags.test(U32(UIScene::SETTING_MENU))) {
+        SettingMenu();
     }
 
     nk_sdl_render(ctx, AA);
@@ -97,27 +105,32 @@ void Game::MainMenu() {
     float width =
         font->handle.width(font->handle.userdata, font->handle.height,
                            "Single Player", strlen("Single Player"));
-    int button_count = 4;
-    float row_height = 30;
-    float title_h    = 30;
-    float pad_y      = ctx->style.window.padding.y * 2;
-    float border_h   = ctx->style.window.border * 2;
+    int   button_count = 4;
+    float row_height   = 30;
+    float title_h      = 30;
+    float pad_y        = ctx->style.window.padding.y * 2;
+    float border_h     = ctx->style.window.border * 2;
 
-    float h = (row_height + pad_y + border_h) * button_count + title_h;
+    float h =
+        (row_height + pad_y + border_h) * button_count + title_h;
 
-    if (nk_begin(ctx, "Menu", nk_rect(50.f, 50.f, width + 50, h),
-                 NK_WINDOW_BORDER | NK_WINDOW_TITLE)) {
+    ctx->style.window.background       = nk_color{0, 0, 0, 0};
+    ctx->style.window.fixed_background = nk_style_item_color({0});
+    ctx->style.window.border           = 0.f;
+    if (nk_begin(ctx, "Menu", nk_rect(50.f, 50.f, 250, 250),
+                 NK_WINDOW_BORDER)) {
         nk_layout_row_dynamic(ctx, 0, 1);
         if (nk_button_label(ctx, "Single Player")) {
             InfoLog("Single player");
+            ui_scene_flags.flip(U32(UIScene::SINGLEPLAYER));
         }
         if (nk_button_label(ctx, "Multi Players")) {
             InfoLog("Multi players");
-            ui_scene = UIScene::MULTIPLAYERS;
+            ui_scene_flags.flip(U32(UIScene::MULTIPLAYERS));
         }
         if (nk_button_label(ctx, "Settings")) {
             InfoLog("Setting");
-            ui_scene = UIScene::SETTING_MENU;
+            ui_scene_flags.flip(U32(UIScene::SETTING_MENU));
         }
         if (nk_button_label(ctx, "Quit")) {
             InfoLog("Quit");
@@ -130,41 +143,28 @@ void Game::MainMenu() {
 void Game::SettingMenu() {
     SDL_RenderTexture(renderer, main_menu_bg_tex, NULL, NULL);
     if (nk_begin(ctx, "Settttting", nk_rect(50.f, 50.f, 200.f, 300.f),
-                 NK_WINDOW_BORDER | NK_WINDOW_TITLE)) {
+                 NK_WINDOW_BORDER | NK_WINDOW_TITLE |
+                     NK_WINDOW_CLOSABLE)) {
+    }
+    else {
+        ui_scene_flags.flip(U32(UIScene::SETTING_MENU));
     }
     nk_end(ctx);
 }
 
 void Game::MultiplierMenu() {
-    SDL_RenderTexture(renderer, main_menu_bg_tex, NULL, NULL);
     if (nk_begin(ctx, "Multi Players",
-                 nk_rect(50.f, 50.f, 200.f, 300.f),
-                 NK_WINDOW_BORDER | NK_WINDOW_CLOSABLE |
-                     NK_WINDOW_MOVABLE)) {
-        nk_menubar_begin(ctx);
-        nk_layout_row_begin(ctx, NK_STATIC, 25, 2);
-        nk_layout_row_push(ctx, 45);
-        if (nk_menu_begin_label(ctx, "FILE", NK_TEXT_LEFT,
-                                nk_vec2(120, 200))) {
-            nk_layout_row_dynamic(ctx, 30, 1);
-            nk_menu_item_label(ctx, "OPEN", NK_TEXT_LEFT);
-            nk_menu_item_label(ctx, "CLOSE", NK_TEXT_LEFT);
-            nk_menu_end(ctx);
+                 nk_rect(300.f, 50.f, 200.f, 300.f), 0)) {
+        nk_layout_row_static(ctx, 40, 80, 2);
+        if (nk_button_label(ctx, "JOIN")) {
+            DebugLog("Join");
         }
-        nk_layout_row_push(ctx, 45);
-        if (nk_menu_begin_label(ctx, "EDIT", NK_TEXT_LEFT,
-                                nk_vec2(120, 200))) {
-            nk_layout_row_dynamic(ctx, 30, 1);
-            nk_menu_item_label(ctx, "COPY", NK_TEXT_LEFT);
-            nk_menu_item_label(ctx, "CUT", NK_TEXT_LEFT);
-            nk_menu_item_label(ctx, "PASTE", NK_TEXT_LEFT);
-            nk_menu_end(ctx);
+        if (nk_button_label(ctx, "HOST")) {
+            DebugLog("Host");
         }
-        nk_layout_row_end(ctx);
-        nk_menubar_end(ctx);
     }
     else {
-        ui_scene = UIScene::MAIN_MENU;
+        ui_scene_flags.flip(U32(UIScene::MULTIPLAYERS));
     }
     nk_end(ctx);
 }

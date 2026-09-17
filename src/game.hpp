@@ -1,6 +1,7 @@
 #pragma once
 
 // Manage connection after window start up
+#include <bitset>
 #include <filesystem>
 #include <functional>
 #include <stack>
@@ -143,9 +144,12 @@ class Game {
     };
     enum class UIScene {
         MAIN_MENU,
+        SINGLEPLAYER,
         MULTIPLAYERS,
         SETTING_MENU,
+        MAX,
     };
+    using UISceneFlags = std::bitset<U32(UIScene::MAX)>;
 
     [[nodiscard]] GameState Run(u64 delta_ns);
     void                    OnEvent(SDL_Event* e);
@@ -162,13 +166,14 @@ class Game {
 
     int win_w = 0, win_h = 0;
 
-    GameState             game_state = Game::GameState::RUNNING;
-    UIScene               ui_scene   = Game::UIScene::MAIN_MENU;
-    nk_context*           ctx        = nullptr;
-    nk_font*              font       = nullptr;
-    nk_colorf             nk_bg      = {0};
-    enum nk_anti_aliasing AA         = NK_ANTI_ALIASING_ON;
-    nk_text_edit          txt_edit   = {0};
+    GameState             game_state     = Game::GameState::RUNNING;
+    UISceneFlags          ui_scene_flags = {0};
+    nk_context*           ctx            = nullptr;
+    nk_font*              font           = nullptr;
+    nk_colorf             nk_bg          = {0};
+    enum nk_anti_aliasing AA             = NK_ANTI_ALIASING_ON;
+    nk_text_edit*         txt_edit       = nullptr;
+    char                  txt_edit_buf[512];
 
     // where to find source
     ConstString main_bg_path;
